@@ -48,6 +48,11 @@ type MapPair struct {
 	Count int       `json:"count"`
 }
 
+type SpecialDTO struct {
+	Date         time.Time `json:"date"`
+	SpecialPrize string    `json:"specialPrize"`
+}
+
 type WrapResultAPI struct {
 	Date       string   `json:"date"`
 	ListNumber []string `json:"listNumber"`
@@ -81,6 +86,9 @@ func main() {
 	http.HandleFunc("/sample/count/one-year", getTopNumberBestYear)
 	http.HandleFunc("/sample/count/one-month", getTopNumberBestMonth)
 	http.HandleFunc("/sample/count/one-week", getTopNumberBestWeek)
+	http.HandleFunc("/sample/count-special/one-week", getSpecialNumberBestWeek)
+	http.HandleFunc("/sample/count-special/one-month", getSpecialNumberBestLastMonth)
+	http.HandleFunc("/sample/count-special/one-year", getSpecialNumberBestYear)
 	http.HandleFunc("/sample/count/pair", getTopPairNumberBest)
 
 	// Khởi động server và lắng nghe trên cổng 8080
@@ -88,6 +96,120 @@ func main() {
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Printf("Error starting server: %s\n", err)
 	}
+}
+
+func getSpecialNumberBestWeek(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
+	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataSpecial(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].SpecialPrize[3:])
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(responseForClient)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_de", "O1", dataPush)
+}
+
+func getSpecialNumberBestLastMonth(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var fistDayOfLastMonth = time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := fistDayOfLastMonth.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataSpecial(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].SpecialPrize[3:])
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(responseForClient)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_de", "H1", dataPush)
+}
+
+func getSpecialNumberBestYear(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2025.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataSpecial(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		if "??" == resultBody[i].SpecialPrize[3:] {
+			continue
+		}
+		listNumberString = append(listNumberString, resultBody[i].SpecialPrize[3:])
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(responseForClient)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_de", "A1", dataPush)
 }
 
 func countOccurrences(list []string) map[string]int {
@@ -528,6 +650,50 @@ func closeConnection(db *sql.DB) {
 			log.Fatal("Không thể đóng kết nối database:", err)
 		}
 	}(db) // Đóng kết nối khi xong
+}
+
+func loadDataSpecial(fromDate string, toDate string) []SpecialDTO {
+	//open connection
+	db := openConnection()
+	if toDate == "" {
+		toDate = time.Now().Format("2006-01-02")
+
+	}
+
+	// Query dữ liệu từ table
+	rows, err := db.Query("select dox.day_of_prize as `date`, dox.special_prize as `specialPrize` "+
+		"from day_of_xsmbs dox "+
+		"where dox.day_of_prize <= cast(? as date) and dox.day_of_prize >= cast(? as date) "+
+		"order by dox.day_of_prize desc", toDate, fromDate)
+	if err != nil {
+		log.Fatal("Lỗi khi query:", err)
+	}
+	closeConnection(db)
+
+	// Tạo slice để chứa danh sách users
+	var dayOfXsmbs []SpecialDTO
+
+	// Duyệt qua các row trả về
+	for rows.Next() {
+		var dayOfXsmb SpecialDTO
+		// Scan dữ liệu từ row vào struct
+		err := rows.Scan(&dayOfXsmb.Date, &dayOfXsmb.SpecialPrize)
+		if err != nil {
+			log.Fatal("Lỗi khi scan dữ liệu:", err)
+		}
+		dayOfXsmbs = append(dayOfXsmbs, dayOfXsmb)
+	}
+
+	// Kiểm tra lỗi sau khi duyệt rows
+	if err = rows.Err(); err != nil {
+		log.Fatal("Lỗi khi duyệt rows:", err)
+	}
+	//dayOfXsmb.
+
+	if err != nil {
+		log.Fatal("Lỗi khi parse ngày:", err)
+	}
+	return dayOfXsmbs
 }
 
 func loadDataResponse(fromDate string, toDate string) []WrapResultAPI {
