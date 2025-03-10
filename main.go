@@ -133,7 +133,7 @@ func getTopNumberBestYear(w http.ResponseWriter, r *http.Request) {
 		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
 	}
 	//push data to google sheet
-	pushToSpreadSheet("StartWith", "A22", dataPush)
+	pushToSpreadSheet("Phan_tich_Lo", "A22", dataPush)
 }
 
 func getTopNumberBestMonth(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +170,7 @@ func getTopNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
 	}
 	//push data to google sheet
-	pushToSpreadSheet("StartWith", "H22", dataPush)
+	pushToSpreadSheet("Phan_tich_Lo", "H22", dataPush)
 }
 
 func getTopNumberBestWeek(w http.ResponseWriter, r *http.Request) {
@@ -207,7 +207,7 @@ func getTopNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
 	}
 	//push data to google sheet
-	pushToSpreadSheet("StartWith", "O22", dataPush)
+	pushToSpreadSheet("Phan_tich_Lo", "O22", dataPush)
 }
 
 func getTopStartNumberBestDetail(w http.ResponseWriter, r *http.Request) {
@@ -294,7 +294,7 @@ func getTopStartNumberBest2025(w http.ResponseWriter, r *http.Request) {
 		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
 	}
 	//push data to google sheet
-	pushToSpreadSheet("StartWith", "A1", dataPush)
+	pushToSpreadSheet("Phan_tich_Lo", "A1", dataPush)
 }
 
 func getTopStartNumberBestWeek(w http.ResponseWriter, r *http.Request) {
@@ -338,7 +338,7 @@ func getTopStartNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
 	}
 	//push data to google sheet
-	pushToSpreadSheet("StartWith", "O1", dataPush)
+	pushToSpreadSheet("Phan_tich_Lo", "O1", dataPush)
 }
 
 func getTopStartNumberBestMonth(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +383,7 @@ func getTopStartNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
 	}
 	//push data to google sheet
-	pushToSpreadSheet("StartWith", "H1", dataPush)
+	pushToSpreadSheet("Phan_tich_Lo", "H1", dataPush)
 }
 
 // Handler cho API GET /sample
