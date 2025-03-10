@@ -2,12 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
+	"google.golang.org/api/sheets/v4"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -39,18 +43,30 @@ type WrapSQLResult struct {
 	listNumber string
 }
 
+type MapPair struct {
+	Pair  [2]string `json:"pair"`
+	Count int       `json:"count"`
+}
+
 type WrapResultAPI struct {
 	Date       string   `json:"date"`
 	ListNumber []string `json:"listNumber"`
 }
 
-type formatForHuman struct {
+type ResFormatForHuman struct {
 	Key   string `json:"key"`
 	Value int    `json:"value"`
 }
 
+type WrapFormatForHuman struct {
+	StartWith  string              `json:"startWith"`
+	Value      int                 `json:"value"`
+	NumberList []ResFormatForHuman `json:"numberList"`
+}
+
 func main() {
-	//var listTime = calculateTime(2)
+	//var listTime = calculateTime(0)
+	//fmt.Printf("listTime: %v\n", listTime)
 	//for i := 0; i < len(listTime); i++ {
 	//	time.Sleep(1 * time.Second)
 	//	responseHtml := fetchData(listTime[i])
@@ -58,8 +74,14 @@ func main() {
 	//	storeDataResponse(responseHtml)
 	//}
 	// Đăng ký handler cho route /sample
-	http.HandleFunc("/sample/one", getTopOneNumberBest)
-	http.HandleFunc("/sample/pair", getTopPairNumberBest)
+	http.HandleFunc("/sample/count/start-with-detail", getTopStartNumberBestDetail)
+	http.HandleFunc("/sample/count/start-with-2025", getTopStartNumberBest2025)
+	http.HandleFunc("/sample/count/start-with-week", getTopStartNumberBestWeek)
+	http.HandleFunc("/sample/count/start-with-month", getTopStartNumberBestMonth)
+	http.HandleFunc("/sample/count/one-year", getTopNumberBestYear)
+	http.HandleFunc("/sample/count/one-month", getTopNumberBestMonth)
+	http.HandleFunc("/sample/count/one-week", getTopNumberBestWeek)
+	http.HandleFunc("/sample/count/pair", getTopPairNumberBest)
 
 	// Khởi động server và lắng nghe trên cổng 8080
 	fmt.Println("Server is listening on port 8080...")
@@ -77,8 +99,118 @@ func countOccurrences(list []string) map[string]int {
 	return countMap
 }
 
-// Handler cho API GET /sample
-func getTopOneNumberBest(w http.ResponseWriter, r *http.Request) {
+func getTopNumberBestYear(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2025.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(responseForClient)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("StartWith", "A22", dataPush)
+}
+
+func getTopNumberBestMonth(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOfLastMonth = time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOfLastMonth.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(responseForClient)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("StartWith", "H22", dataPush)
+}
+
+func getTopNumberBestWeek(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
+	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(responseForClient)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("StartWith", "O22", dataPush)
+}
+
+func getTopStartNumberBestDetail(w http.ResponseWriter, r *http.Request) {
 	// Force input is GET method
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -90,25 +222,168 @@ func getTopOneNumberBest(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < len(resultBody); i++ {
 		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
 	}
-	result := countOccurrences(listNumberString)
-
-	//// In ra kết quả
-	//fmt.Println("Occurrences of elements:")
-	//for key, value := range result {
-	//	if value > 10 {
-	//		fmt.Printf("%s: %d\n", key, value)
-	//	}
-	//}
-	//responseForClient := sortMapByValueDesc(result)
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
+	resultCountOne := countOccurrences(listNumberString)
+	var wrapListNumberForRes []WrapFormatForHuman
+	for item := range mapStartWith {
+		var listNumberForRes []ResFormatForHuman
+		for oneNumCout := range resultCountOne {
+			startWithStr := oneNumCout[0:1]
+			if item == startWithStr {
+				listNumberForRes = append(listNumberForRes, ResFormatForHuman{Key: oneNumCout, Value: resultCountOne[oneNumCout]})
+			}
+		}
+		wrapListNumberForRes = append(wrapListNumberForRes, WrapFormatForHuman{StartWith: item, NumberList: listNumberForRes, Value: mapStartWith[item]})
+	}
 
 	// Handle and response json
 	w.Header().Set("Content-Type", "application/json")
-	jsonData, err := json.Marshal(result)
+	jsonData, err := json.Marshal(wrapListNumberForRes)
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		log.Fatal("Failed to encode response")
 	}
 	w.Write(jsonData)
+}
+
+func getTopStartNumberBest2025(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2025.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(mapStartWith)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(resFormatForHumanList); i++ {
+		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("StartWith", "A1", dataPush)
+}
+
+func getTopStartNumberBestWeek(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
+	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(mapStartWith)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(resFormatForHumanList); i++ {
+		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("StartWith", "O1", dataPush)
+}
+
+func getTopStartNumberBestMonth(w http.ResponseWriter, r *http.Request) {
+	// Force input is GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		log.Fatal("Method not allowed")
+	}
+	var now = time.Now()
+	var lastMonth = now.AddDate(0, -1, 0)
+	var firstDayOfLastMonth = time.Date(lastMonth.Year(), lastMonth.Month(), 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOfLastMonth.Format("2006-01-01")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
+	// Handle and response json
+	w.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(mapStartWith)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Fatal("Failed to encode response")
+	}
+	w.Write(jsonData)
+
+	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(resFormatForHumanList); i++ {
+		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("StartWith", "H1", dataPush)
 }
 
 // Handler cho API GET /sample
@@ -120,22 +395,16 @@ func getTopPairNumberBest(w http.ResponseWriter, r *http.Request) {
 	}
 	queryParams := r.URL.Query()
 	resultBody := loadDataResponse(queryParams.Get("fromDate"), queryParams.Get("toDate"))
-	var allList [][]string
+	var allPairList [][2]string
 	for i := 0; i < len(resultBody); i++ {
-		allList = append(allList, resultBody[i].ListNumber)
+		var listPair = findPairs(resultBody[i].ListNumber)
+		allPairList = append(allPairList, listPair...)
 	}
-	result := countPairOccurrences(allList)
-
-	fmt.Println("Các cặp chuỗi và số lần xuất hiện:")
-	for pair, count := range result {
-		if count > 0 {
-			fmt.Printf("Cặp (%s, %s): %d lần\n", pair[0], pair[1], count)
-		}
-	}
+	var mapPairs = findMostFrequentPairs(allPairList)
 
 	// Handle and response json
 	w.Header().Set("Content-Type", "application/json")
-	jsonData, err := json.Marshal(result)
+	jsonData, err := json.Marshal(mapPairs)
 	if err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		log.Fatal("Failed to encode response")
@@ -159,22 +428,84 @@ func findPairs(list []string) [][2]string {
 	return pairs
 }
 
-// Hàm đếm cặp chuỗi xuất hiện nhiều lần nhất và in kết quả
-func countPairOccurrences(lists [][]string) map[[2]string]int {
-	pairCount := make(map[[2]string]int) // Map lưu trữ số lần xuất hiện của cặp chuỗi
-
-	// Duyệt qua tất cả các danh sách con
-	for _, list := range lists {
-		// Tìm các cặp chuỗi trong danh sách con
-		pairs := findPairs(list)
-		// Đếm tần suất các cặp chuỗi
-		for _, pair := range pairs {
-			pairCount[pair]++
-		}
+// Hàm tìm cặp string xuất hiện nhiều nhất và sắp xếp theo số lần xuất hiện giảm dần
+func findMostFrequentPairs(allPairList [][2]string) []MapPair {
+	// Bước 1: Đếm số lần xuất hiện của từng cặp string
+	pairCount := make(map[[2]string]int)
+	for _, pair := range allPairList {
+		pairCount[pair]++
+	}
+	var pairCountList []MapPair
+	for pair, count := range pairCount {
+		pairCountList = append(pairCountList, MapPair{pair, count})
 	}
 
-	return pairCount
+	// Bước 3: Sắp xếp slice theo số lần xuất hiện giảm dần
+	sort.Slice(pairCountList, func(i, j int) bool {
+		return pairCountList[i].Count > pairCountList[j].Count
+	})
+
+	return pairCountList
 }
+
+//// Handler cho API GET /sample
+//func getTopThreeNumberBest(w http.ResponseWriter, r *http.Request) {
+//	// Force input is GET method
+//	if r.Method != http.MethodGet {
+//		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+//		log.Fatal("Method not allowed")
+//	}
+//	queryParams := r.URL.Query()
+//	resultBody := loadDataResponse(queryParams.Get("fromDate"), queryParams.Get("toDate"))
+//	var allList [][]string
+//	for i := 0; i < len(resultBody); i++ {
+//		allList = append(allList, resultBody[i].ListNumber)
+//	}
+//	result := countTripletOccurrences(allList)
+//
+//	resultFroClient := sortMapByValueThreeDesc(result)
+//	// Handle and response json
+//	w.Header().Set("Content-Type", "application/json")
+//	jsonData, err := json.Marshal(resultFroClient)
+//	if err != nil {
+//		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+//		log.Fatal("Failed to encode response")
+//	}
+//	w.Write(jsonData)
+//}
+//
+//// Hàm tìm các bộ 3 chuỗi trong một danh sách
+//func findTriplets(list []string) [][3]string {
+//	var triplets [][3]string
+//	n := len(list)
+//	// Duyệt qua danh sách để tạo các bộ 3 chuỗi
+//	for i := 0; i < n-2; i++ {
+//		for j := i + 1; j < n-1; j++ {
+//			for k := j + 1; k < n; k++ {
+//				triplet := [3]string{list[i], list[j], list[k]}
+//				triplets = append(triplets, triplet)
+//			}
+//		}
+//	}
+//	return triplets
+//}
+//
+//// Hàm đếm bộ 3 chuỗi xuất hiện nhiều lần nhất và in kết quả
+//func countTripletOccurrences(lists [][]string) map[[3]string]int {
+//	tripletCount := make(map[[3]string]int) // Map lưu trữ số lần xuất hiện của bộ 3 chuỗi
+//
+//	// Duyệt qua tất cả các danh sách con
+//	for _, list := range lists {
+//		// Tìm các bộ 3 chuỗi trong danh sách con
+//		triplets := findTriplets(list)
+//		// Đếm tần suất các bộ 3 chuỗi
+//		for _, triplet := range triplets {
+//			tripletCount[triplet]++
+//		}
+//	}
+//
+//	return tripletCount
+//}
 
 func openConnection() *sql.DB {
 	// Format: "username:password@tcp(host:port)/dbname"
@@ -182,18 +513,21 @@ func openConnection() *sql.DB {
 	if err != nil {
 		log.Fatal("Không thể kết nối database:", err)
 	}
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatal("Không thể đóng kết nối database:", err)
-		}
-	}(db) // Đóng kết nối khi xong
 
 	err = db.Ping()
 	if err != nil {
 		log.Fatal("Không thể ping database:", err)
 	}
 	return db
+}
+
+func closeConnection(db *sql.DB) {
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal("Không thể đóng kết nối database:", err)
+		}
+	}(db) // Đóng kết nối khi xong
 }
 
 func loadDataResponse(fromDate string, toDate string) []WrapResultAPI {
@@ -214,12 +548,7 @@ func loadDataResponse(fromDate string, toDate string) []WrapResultAPI {
 	if err != nil {
 		log.Fatal("Lỗi khi query:", err)
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}(rows) // Đóng rows khi xong
+	closeConnection(db)
 
 	// Tạo slice để chứa danh sách users
 	var dayOfXsmbs []WrapSQLResult
@@ -409,18 +738,106 @@ func calculateTime(dayNumber int) []string {
 }
 
 // Hàm để sắp xếp map theo giá trị giảm dần
-func sortMapByValueDesc(m map[string]int) []formatForHuman {
+func sortMapByValueDesc(m map[string]int) []ResFormatForHuman {
 	// Chuyển map thành slice các cặp key-value
-	var sortedList []formatForHuman
+	var sortedList []ResFormatForHuman
 	for k, v := range m {
-		var resultForHuman = formatForHuman{Key: k, Value: v}
+		var resultForHuman = ResFormatForHuman{Key: k, Value: v}
 		sortedList = append(sortedList, resultForHuman)
 	}
 
 	// Sắp xếp slice theo giá trị giảm dần
 	sort.Slice(sortedList, func(i, j int) bool {
-		return sortedList[i].Value > sortedList[j].Value
+		return strings.Compare(sortedList[i].Key, sortedList[j].Key) > 0
 	})
 
 	return sortedList
+}
+
+// Hàm để sắp xếp map theo giá trị giảm dần
+func sortMapByValuePairDesc(m map[[2]string]int) []ResFormatForHuman {
+	var ss []ResFormatForHuman
+	for k, v := range m {
+		if v > 3 {
+			ss = append(ss, ResFormatForHuman{k[0] + "," + k[1], v})
+		}
+	}
+
+	// Sắp xếp slice theo giá trị int giảm dần
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value > ss[j].Value
+	})
+
+	// In kết quả đã sắp xếp
+	for _, kv := range ss {
+		fmt.Printf("%v: %d\n", kv.Key, kv.Value)
+	}
+	return ss
+}
+
+// Hàm để sắp xếp map theo giá trị giảm dần
+func sortMapByValueThreeDesc(m map[[3]string]int) []ResFormatForHuman {
+	var ss []ResFormatForHuman
+	for k, v := range m {
+		if v > 3 {
+			ss = append(ss, ResFormatForHuman{k[0] + "," + k[1] + "," + k[2], v})
+		}
+	}
+
+	// Sắp xếp slice theo giá trị int giảm dần
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value > ss[j].Value
+	})
+
+	// In kết quả đã sắp xếp
+	for _, kv := range ss {
+		fmt.Printf("%v: %d\n", kv.Key, kv.Value)
+	}
+	return ss
+}
+
+func pushToSpreadSheet(sheetName string, startPosition string, values [][]interface{}) {
+	// Đường dẫn tới file credentials.json
+	credFile := "google-auth/sinuous-crow-433203-m1-3e1f8830eebd.json"
+
+	// Đọc file credentials và tạo cấu hình
+	data, err := ioutil.ReadFile(credFile)
+	if err != nil {
+		log.Fatalf("Không thể đọc file credentials: %v", err)
+	}
+
+	config, err := google.JWTConfigFromJSON(data, sheets.SpreadsheetsScope)
+	if err != nil {
+		log.Fatalf("Không thể tạo config: %v", err)
+	}
+
+	// Tạo client
+	ctx := context.Background()
+	client := config.Client(ctx)
+
+	// Khởi tạo service cho Google Sheets
+	srv, err := sheets.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		log.Fatalf("Không thể tạo Sheets service: %v", err)
+	}
+
+	// ID của Google Sheet (lấy từ URL của sheet)
+	spreadsheetId := "1-qgSkMXo6lSq19RcxZDcAb6OB8V_NJWeseKrmTs5d0s"
+
+	// Tạo ValueRange để ghi dữ liệu
+	valueRange := &sheets.ValueRange{
+		Values: values,
+	}
+
+	// Vị trí ghi dữ liệu (ví dụ: sheet1, bắt đầu từ ô A1)
+	rangeData := sheetName + "!" + startPosition
+
+	// Ghi dữ liệu vào Google Sheet
+	_, err = srv.Spreadsheets.Values.Update(spreadsheetId, rangeData, valueRange).
+		ValueInputOption("RAW").Do()
+	if err != nil {
+		log.Fatalf("Không thể ghi dữ liệu: %v", err)
+	}
+
+	fmt.Println("Đã ghi dữ liệu thành công!")
 }
