@@ -70,14 +70,15 @@ type WrapFormatForHuman struct {
 }
 
 func main() {
-	//var listTime = calculateTime(0)
-	//fmt.Printf("listTime: %v\n", listTime)
-	//for i := 0; i < len(listTime); i++ {
-	//	time.Sleep(1 * time.Second)
-	//	responseHtml := fetchData(listTime[i])
-	//	//readDataFromResponse(responseHtml)
-	//	storeDataResponse(responseHtml)
-	//}
+	//prepare data
+	listTime := calculateTime()
+	fmt.Printf("listTime: %v\n", listTime)
+	for i := 0; i < len(listTime); i++ {
+		time.Sleep(1 * time.Second)
+		responseHtml := fetchData(listTime[i])
+		//readDataFromResponse(responseHtml)
+		storeDataResponse(responseHtml)
+	}
 	// Đăng ký handler cho route /sample
 	http.HandleFunc("/sample/count/start-with-detail", getTopStartNumberBestDetail)
 	http.HandleFunc("/sample/count/start-with-2025", getTopStartNumberBest2025)
@@ -881,15 +882,42 @@ func fetchData(bodyStr string) string {
 	return string(body)
 }
 
-func calculateTime(dayNumber int) []string {
+func calculateTime() []string {
 	var (
 		// Lấy thời gian hiện tại
 		currentTime = time.Now()
 		_index      = 0
 		arr         []string
 	)
+	var db = openConnection()
+	// Truy vấn lấy bản ghi có CreatedAt lớn nhất
+	rows, err := db.Query("SELECT MAX(dox.created_at) as `date` from day_of_xsmbs dox")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//close connection
+	closeConnection(db)
+	var maxTimeInDb time.Time
+	for rows.Next() {
+		// Scan dữ liệu
+		err := rows.Scan(&maxTimeInDb)
+		if err != nil {
+			log.Fatal("Lỗi khi scan dữ liệu:", err)
+		}
+	}
+	// Kiểm tra lỗi sau khi duyệt rows
+	if rows.Err() != nil {
+		log.Fatal(rows.Err())
+	}
+
 	if currentTime.Hour() < 19 {
 		_index = 1
+	}
+	// Lấy số ngày cần lấy dữ liệu
+	var dayNumber = int(currentTime.Sub(maxTimeInDb).Hours() / 24)
+	// case ignore data
+	if dayNumber == 0 && maxTimeInDb.Hour() > 12 {
+		return arr
 	}
 	for i := _index; i <= dayNumber; i++ {
 		if i == 0 {
