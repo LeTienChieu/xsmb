@@ -79,24 +79,30 @@ func main() {
 		//readDataFromResponse(responseHtml)
 		storeDataResponse(responseHtml)
 	}
-	// Đăng ký handler cho route /sample
-	http.HandleFunc("/sample/count/start-with-detail", getTopStartNumberBestDetail)
-	http.HandleFunc("/sample/count/start-with-2025", getTopStartNumberBest2025)
-	http.HandleFunc("/sample/count/start-with-week", getTopStartNumberBestWeek)
-	http.HandleFunc("/sample/count/start-with-month", getTopStartNumberBestMonth)
+	getTopStartNumberBest2025V2()
+	getTopStartNumberBestWeekV2()
+	getTopStartNumberBestMonthV2()
+	getTopNumberBestWeekV2()
+	getTopNumberBestMonthV2()
+	getTopNumberBestYearV2()
+	//// Đăng ký handler cho route /sample
+	//http.HandleFunc("/sample/count/start-with-detail", getTopStartNumberBestDetail)
+	//http.HandleFunc("/sample/count/start-with-2025", getTopStartNumberBest2025)
+	//http.HandleFunc("/sample/count/start-with-week", getTopStartNumberBestWeek)
+	//http.HandleFunc("/sample/count/start-with-month", getTopStartNumberBestMonth)
 	http.HandleFunc("/sample/count/one-year", getTopNumberBestYear)
 	http.HandleFunc("/sample/count/one-month", getTopNumberBestMonth)
 	http.HandleFunc("/sample/count/one-week", getTopNumberBestWeek)
-	http.HandleFunc("/sample/count-special/one-week", getSpecialNumberBestWeek)
-	http.HandleFunc("/sample/count-special/one-month", getSpecialNumberBestLastMonth)
-	http.HandleFunc("/sample/count-special/one-year", getSpecialNumberBestYear)
-	http.HandleFunc("/sample/count/pair", getTopPairNumberBest)
+	//http.HandleFunc("/sample/count-special/one-week", getSpecialNumberBestWeek)
+	//http.HandleFunc("/sample/count-special/one-month", getSpecialNumberBestLastMonth)
+	//http.HandleFunc("/sample/count-special/one-year", getSpecialNumberBestYear)
+	//http.HandleFunc("/sample/count/pair", getTopPairNumberBest)
 
-	// Khởi động server và lắng nghe trên cổng 8080
-	fmt.Println("Server is listening on port 8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		fmt.Printf("Error starting server: %s\n", err)
-	}
+	//// Khởi động server và lắng nghe trên cổng 8080
+	//fmt.Println("Server is listening on port 8080...")
+	//if err := http.ListenAndServe(":8080", nil); err != nil {
+	//	fmt.Printf("Error starting server: %s\n", err)
+	//}
 }
 
 func getSpecialNumberBestWeek(w http.ResponseWriter, r *http.Request) {
@@ -259,6 +265,28 @@ func getTopNumberBestYear(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "A22", dataPush)
 }
 
+func getTopNumberBestYearV2() {
+	var now = time.Now()
+	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2025.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_Lo", "A22", dataPush)
+}
+
 func getTopNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 	// Force input is GET method
 	if r.Method != http.MethodGet {
@@ -296,6 +324,28 @@ func getTopNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "H22", dataPush)
 }
 
+func getTopNumberBestMonthV2() {
+	var now = time.Now()
+	var firstDayOfLastMonth = time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOfLastMonth.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_Lo", "H22", dataPush)
+}
+
 func getTopNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 	// Force input is GET method
 	if r.Method != http.MethodGet {
@@ -323,6 +373,28 @@ func getTopNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(jsonData)
 
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(responseForClient); i++ {
+		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_Lo", "O22", dataPush)
+}
+
+func getTopNumberBestWeekV2() {
+	var now = time.Now()
+	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
+	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	result := countOccurrences(listNumberString)
+	responseForClient := sortMapByValueDesc(result)
 	//push data to google sheet
 	var dataPush = make([][]interface{}, len(responseForClient)+1)
 	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
@@ -420,6 +492,36 @@ func getTopStartNumberBest2025(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "A1", dataPush)
 }
 
+func getTopStartNumberBest2025V2() {
+	var now = time.Now()
+	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2025.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
+	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(resFormatForHumanList); i++ {
+		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_Lo", "A1", dataPush)
+}
+
 func getTopStartNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 	// Force input is GET method
 	if r.Method != http.MethodGet {
@@ -453,6 +555,36 @@ func getTopStartNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(jsonData)
 
+	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(resFormatForHumanList); i++ {
+		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_Lo", "O1", dataPush)
+}
+
+func getTopStartNumberBestWeekV2() {
+	var now = time.Now()
+	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
+	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
 	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
 	//push data to google sheet
 	var dataPush = make([][]interface{}, len(mapStartWith)+1)
@@ -498,6 +630,37 @@ func getTopStartNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(jsonData)
 
+	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
+	//push data to google sheet
+	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
+	for i := 0; i < len(resFormatForHumanList); i++ {
+		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
+	}
+	//push data to google sheet
+	pushToSpreadSheet("Phan_tich_Lo", "H1", dataPush)
+}
+
+func getTopStartNumberBestMonthV2() {
+	var now = time.Now()
+	var lastMonth = now.AddDate(0, -1, 0)
+	var firstDayOfLastMonth = time.Date(lastMonth.Year(), lastMonth.Month(), 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOfLastMonth.Format("2006-01-01")
+	toDate := now.Format("2006-01-02")
+	resultBody := loadDataResponse(fromDate, toDate)
+	var listNumberString []string
+	for i := 0; i < len(resultBody); i++ {
+		listNumberString = append(listNumberString, resultBody[i].ListNumber...)
+	}
+	mapStartWith := make(map[string]int)
+	for i := 0; i < len(listNumberString); i++ {
+		str := listNumberString[i][0:1]
+		if _, ok := mapStartWith[str]; !ok {
+			mapStartWith[str] = 1
+		} else {
+			mapStartWith[str] = mapStartWith[str] + 1
+		}
+	}
 	resFormatForHumanList := sortMapByValueDesc(mapStartWith)
 	//push data to google sheet
 	var dataPush = make([][]interface{}, len(mapStartWith)+1)
