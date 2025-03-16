@@ -79,12 +79,12 @@ func main() {
 		//readDataFromResponse(responseHtml)
 		storeDataResponse(responseHtml)
 	}
+	getTopStartNumberBest2024V2()
+	getTopStartNumberBestCurentMonthV2()
 	getTopStartNumberBest2025V2()
-	getTopStartNumberBestWeekV2()
-	getTopStartNumberBestMonthV2()
-	getTopNumberBestWeekV2()
-	getTopNumberBestMonthV2()
-	getTopNumberBestYearV2()
+	getTopNumberBestCurrentMonthV2()
+	getTopNumberBest2025V2()
+	getTopNumberBestYear2024V2()
 	//// Đăng ký handler cho route /sample
 	//http.HandleFunc("/sample/count/start-with-detail", getTopStartNumberBestDetail)
 	//http.HandleFunc("/sample/count/start-with-2025", getTopStartNumberBest2025)
@@ -265,11 +265,11 @@ func getTopNumberBestYear(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "A22", dataPush)
 }
 
-func getTopNumberBestYearV2() {
-	var now = time.Now()
-	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
-	fromDate := firstDayOf2025.Format("2006-01-02")
-	toDate := now.Format("2006-01-02")
+func getTopNumberBestYear2024V2() {
+	var firstDayOf2024 = time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2024.Format("2006-01-02")
+	var lastDayOf2024 = time.Date(2024, 12, 31, 0, 0, 0, 0, time.Local)
+	toDate := lastDayOf2024.Format("2006-01-02")
 	resultBody := loadDataResponse(fromDate, toDate)
 	var listNumberString []string
 	for i := 0; i < len(resultBody); i++ {
@@ -324,9 +324,9 @@ func getTopNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "H22", dataPush)
 }
 
-func getTopNumberBestMonthV2() {
+func getTopNumberBest2025V2() {
 	var now = time.Now()
-	var firstDayOfLastMonth = time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, time.Local)
+	var firstDayOfLastMonth = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
 	fromDate := firstDayOfLastMonth.Format("2006-01-02")
 	toDate := now.Format("2006-01-02")
 	resultBody := loadDataResponse(fromDate, toDate)
@@ -383,10 +383,10 @@ func getTopNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "O22", dataPush)
 }
 
-func getTopNumberBestWeekV2() {
+func getTopNumberBestCurrentMonthV2() {
 	var now = time.Now()
-	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
-	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	var firstDatOfThisMonth = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDatOfThisMonth.Format("2006-01-02")
 	toDate := now.Format("2006-01-02")
 	resultBody := loadDataResponse(fromDate, toDate)
 	var listNumberString []string
@@ -401,8 +401,22 @@ func getTopNumberBestWeekV2() {
 	for i := 0; i < len(responseForClient); i++ {
 		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
 	}
+	var dataMissPush = make([][]interface{}, len(responseForClient))
+	dataMissPush = append(dataMissPush, []interface{}{"Số chưa về", "Đếm", fromDate, toDate})
+	for i := 0; i < 100; i++ {
+		iTypeStr := fmt.Sprintf("%d", i)
+		if i < 10 {
+			iTypeStr = fmt.Sprintf("0%d", i)
+		}
+		if _, ok := result[iTypeStr]; !ok {
+			dataMissPush = append(dataMissPush, []interface{}{iTypeStr, 0})
+		}
+	}
+
 	//push data to google sheet
 	pushToSpreadSheet("Phan_tich_Lo", "O22", dataPush)
+
+	pushToSpreadSheet("Phan_tich_Lo", "V22", dataMissPush)
 }
 
 func getTopStartNumberBestDetail(w http.ResponseWriter, r *http.Request) {
@@ -492,11 +506,11 @@ func getTopStartNumberBest2025(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "A1", dataPush)
 }
 
-func getTopStartNumberBest2025V2() {
-	var now = time.Now()
-	var firstDayOf2025 = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
-	fromDate := firstDayOf2025.Format("2006-01-02")
-	toDate := now.Format("2006-01-02")
+func getTopStartNumberBest2024V2() {
+	var firstDayOf2024 = time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDayOf2024.Format("2006-01-02")
+	var lastDayOf2024 = time.Date(2024, 12, 31, 0, 0, 0, 0, time.Local)
+	toDate := lastDayOf2024.Format("2006-01-02")
 	resultBody := loadDataResponse(fromDate, toDate)
 	var listNumberString []string
 	for i := 0; i < len(resultBody); i++ {
@@ -566,10 +580,10 @@ func getTopStartNumberBestWeek(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "O1", dataPush)
 }
 
-func getTopStartNumberBestWeekV2() {
+func getTopStartNumberBestCurentMonthV2() {
 	var now = time.Now()
-	var firstDayOfThisWeek = now.AddDate(0, 0, -int(now.Weekday()))
-	fromDate := firstDayOfThisWeek.Format("2006-01-02")
+	var firstDatOfThisMonth = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+	fromDate := firstDatOfThisMonth.Format("2006-01-02")
 	toDate := now.Format("2006-01-02")
 	resultBody := loadDataResponse(fromDate, toDate)
 	var listNumberString []string
@@ -641,10 +655,9 @@ func getTopStartNumberBestMonth(w http.ResponseWriter, r *http.Request) {
 	pushToSpreadSheet("Phan_tich_Lo", "H1", dataPush)
 }
 
-func getTopStartNumberBestMonthV2() {
+func getTopStartNumberBest2025V2() {
 	var now = time.Now()
-	var lastMonth = now.AddDate(0, -1, 0)
-	var firstDayOfLastMonth = time.Date(lastMonth.Year(), lastMonth.Month(), 1, 0, 0, 0, 0, time.Local)
+	var firstDayOfLastMonth = time.Date(2025, 1, 1, 0, 0, 0, 0, time.Local)
 	fromDate := firstDayOfLastMonth.Format("2006-01-01")
 	toDate := now.Format("2006-01-02")
 	resultBody := loadDataResponse(fromDate, toDate)
