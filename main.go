@@ -9,6 +9,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
@@ -70,6 +71,19 @@ type WrapFormatForHuman struct {
 }
 
 func main() {
+	c := cron.New()
+	_, err := c.AddFunc("0 21 * * * *", func() {
+		fmt.Println("Cron job started at: ", time.Now())
+		jobRunning()
+	})
+	if err != nil {
+		log.Fatalf("Lỗi khi thêm cron job: %v", err)
+	}
+	c.Start()
+	// Chờ vô hạn để cron tiếp tục chạy
+	select {}
+}
+func jobRunning() {
 	//prepare data
 	listTime := calculateTime()
 	fmt.Printf("listTime: %v\n", listTime)
@@ -85,24 +99,6 @@ func main() {
 	getTopNumberBestCurrentMonthV2()
 	getTopNumberBest2025V2()
 	getTopNumberBestYear2024V2()
-	//// Đăng ký handler cho route /sample
-	//http.HandleFunc("/sample/count/start-with-detail", getTopStartNumberBestDetail)
-	//http.HandleFunc("/sample/count/start-with-2025", getTopStartNumberBest2025)
-	//http.HandleFunc("/sample/count/start-with-week", getTopStartNumberBestWeek)
-	//http.HandleFunc("/sample/count/start-with-month", getTopStartNumberBestMonth)
-	http.HandleFunc("/sample/count/one-year", getTopNumberBestYear)
-	http.HandleFunc("/sample/count/one-month", getTopNumberBestMonth)
-	http.HandleFunc("/sample/count/one-week", getTopNumberBestWeek)
-	//http.HandleFunc("/sample/count-special/one-week", getSpecialNumberBestWeek)
-	//http.HandleFunc("/sample/count-special/one-month", getSpecialNumberBestLastMonth)
-	//http.HandleFunc("/sample/count-special/one-year", getSpecialNumberBestYear)
-	//http.HandleFunc("/sample/count/pair", getTopPairNumberBest)
-
-	//// Khởi động server và lắng nghe trên cổng 8080
-	//fmt.Println("Server is listening on port 8080...")
-	//if err := http.ListenAndServe(":8080", nil); err != nil {
-	//	fmt.Printf("Error starting server: %s\n", err)
-	//}
 }
 
 func getSpecialNumberBestWeek(w http.ResponseWriter, r *http.Request) {
