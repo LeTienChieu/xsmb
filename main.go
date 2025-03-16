@@ -71,11 +71,11 @@ type WrapFormatForHuman struct {
 }
 
 func main() {
-	log.Print("Server is starting...")
-	jobRunning()
-	log.Print("Server test success")
+	//log.Print("Server is starting...")
+	//jobRunning()
+	//log.Print("Server test success")
 	c := cron.New()
-	_, err := c.AddFunc("0 21 * * * *", func() {
+	_, err := c.AddFunc("0 21 * * *", func() {
 		fmt.Println("Cron job started at: ", time.Now())
 		jobRunning()
 	})
