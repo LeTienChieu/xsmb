@@ -7,13 +7,6 @@ import (
 	"time"
 )
 
-type LogicBusinessService struct {
-}
-
-func NewLogicBusinessService() *LogicBusinessService {
-	return &LogicBusinessService{}
-}
-
 func GetTopNumberBestYear2024V2() {
 	var firstDayOf2024 = time.Date(2024, 1, 1, 0, 0, 0, 0, time.Local)
 	fromDate := firstDayOf2024.Format("2006-01-02")
@@ -27,7 +20,7 @@ func GetTopNumberBestYear2024V2() {
 	result := utils.CountOccurrences(listNumberString)
 	responseForClient := utils.SortMapByValueDesc(result)
 	//push data to google sheet
-	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	var dataPush = [][]interface{}{}
 	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
 	for _, item := range responseForClient {
 		dataPush = append(dataPush, []interface{}{item.Key, item.Value})
@@ -49,7 +42,7 @@ func GetTopNumberBest2025V2() {
 	result := utils.CountOccurrences(listNumberString)
 	responseForClient := utils.SortMapByValueDesc(result)
 	//push data to google sheet
-	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	var dataPush = [][]interface{}{}
 	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
 	for i := 0; i < len(responseForClient); i++ {
 		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
@@ -71,12 +64,12 @@ func GetTopNumberBestCurrentMonthV2() {
 	result := utils.CountOccurrences(listNumberString)
 	responseForClient := utils.SortMapByValueDesc(result)
 	//push data to google sheet
-	var dataPush = make([][]interface{}, len(responseForClient)+1)
+	var dataPush = [][]interface{}{}
 	dataPush = append(dataPush, []interface{}{"Số", "Đếm", fromDate, toDate})
 	for i := 0; i < len(responseForClient); i++ {
 		dataPush = append(dataPush, []interface{}{responseForClient[i].Key, responseForClient[i].Value})
 	}
-	var dataMissPush = make([][]interface{}, len(responseForClient))
+	var dataMissPush = [][]interface{}{}
 	dataMissPush = append(dataMissPush, []interface{}{"Số chưa về", "Đếm", fromDate, toDate})
 	for i := 0; i < 100; i++ {
 		iTypeStr := fmt.Sprintf("%d", i)
@@ -115,7 +108,7 @@ func GetTopStartNumberBest2025V2() {
 	}
 	resFormatForHumanList := utils.SortMapByValueDesc(mapStartWith)
 	//push data to google sheet
-	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	var dataPush = [][]interface{}{}
 	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
 	for i := 0; i < len(resFormatForHumanList); i++ {
 		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
@@ -145,7 +138,7 @@ func GetTopStartNumberBestCurentMonthV2() {
 	}
 	resFormatForHumanList := utils.SortMapByValueDesc(mapStartWith)
 	//push data to google sheet
-	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	var dataPush = [][]interface{}{}
 	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
 	for i := 0; i < len(resFormatForHumanList); i++ {
 		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})
@@ -175,7 +168,7 @@ func GetTopStartNumberBest2024V2() {
 	}
 	resFormatForHumanList := utils.SortMapByValueDesc(mapStartWith)
 	//push data to google sheet
-	var dataPush = make([][]interface{}, len(mapStartWith)+1)
+	var dataPush = [][]interface{}{}
 	dataPush = append(dataPush, []interface{}{"Đầu số", "Đếm", fromDate, toDate})
 	for i := 0; i < len(resFormatForHumanList); i++ {
 		dataPush = append(dataPush, []interface{}{resFormatForHumanList[i].Key, resFormatForHumanList[i].Value})

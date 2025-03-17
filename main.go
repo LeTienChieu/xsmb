@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
-	"github.com/robfig/cron/v3"
 	"log"
 	"myproject/pkg/services"
 	"time"
@@ -11,17 +10,18 @@ import (
 
 func main() {
 	log.Print("Server is starting...")
-	c := cron.New()
-	_, err := c.AddFunc("0 21 * * *", func() {
-		fmt.Println("Cron job started at: ", time.Now())
-		jobRunning()
-	})
-	if err != nil {
-		log.Fatalf("Lỗi khi thêm cron job: %v", err)
-	}
-	c.Start()
-	// Wait forever
-	select {}
+	jobRunning()
+	//c := cron.New()
+	//_, err := c.AddFunc("36 21 * * *", func() {
+	//	fmt.Println("Cron job started at: ", time.Now())
+	//	jobRunning()
+	//})
+	//if err != nil {
+	//	log.Fatalf("Lỗi khi thêm cron job: %v", err)
+	//}
+	//c.Start()
+	//// Wait forever
+	//select {}
 }
 func jobRunning() {
 	//prepare data
