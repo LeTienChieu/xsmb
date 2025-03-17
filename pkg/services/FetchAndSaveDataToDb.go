@@ -31,16 +31,22 @@ func StoreDataFromResponse(responseStr string) {
 			specialPrize = s.Find("td").Eq(1).Text()
 		}
 	})
+	var checkIgnore = strings.Contains(top1Prize, "?") ||
+		strings.Contains(specialPrize, "?") ||
+		strings.Contains(top1Prize, " ") ||
+		strings.Contains(specialPrize, " ")
+	if checkIgnore {
+		return
+	}
 	var arrayPrize []repositories.DayOfXsmbDetail
 	doc.Find("tr").Each(func(i int, s *goquery.Selection) {
-		var checkIgnore = top1Prize != "?????"
 		award := s.Find("td").Eq(0).Text()
 		if award == "Ký hiệu" {
 			return
 		}
 		result := s.Find("td").Eq(1).Text()
 		resultArray := strings.Split(result, " ")
-		if len(resultArray) > 0 && checkIgnore {
+		if len(resultArray) > 0 {
 			for i := 0; i < len(resultArray); i++ {
 				if strings.TrimSpace(resultArray[i]) == "" {
 					continue
@@ -59,7 +65,7 @@ func StoreDataFromResponse(responseStr string) {
 	repositories.CloseOrmConnection(db)
 }
 
-func CalculateTimeWithDb() []string {
+func CalculateMaxTimeWithDb() []string {
 	var (
 		currentTime = time.Now()
 		_index      = 0
@@ -85,6 +91,34 @@ func CalculateTimeWithDb() []string {
 	}
 
 	return arr
+}
+
+func Calculate3YearMinTimeWithDb() []string {
+	var arr []string
+	var minTimeInDb = repositories.GetMinCreateDate()
+	maxTimeForCalculate := minTimeInDb.AddDate(0, 0, -1)
+	minTimeForCalculate := maxTimeForCalculate.AddDate(-3, 0, 0)
+	// Count number of day
+	var dayNumber = int(maxTimeForCalculate.Sub(minTimeForCalculate).Hours() / 24)
+	for i := 0; i <= dayNumber; i++ {
+		if i == 0 {
+			arr = append(arr, fmt.Sprintf("date=%s", maxTimeForCalculate.Format("20060102")))
+			continue
+		}
+		var timeCalculate = maxTimeForCalculate.AddDate(0, 0, -i)
+		arr = append(arr, fmt.Sprintf("date=%s", timeCalculate.Format("20060102")))
+	}
+	return arr
+}
+
+func FetchDataFromSource() {
+	var arr = Calculate3YearMinTimeWithDb()
+	for i := 0; i < len(arr); i++ {
+		time.Sleep(1 * time.Second)
+		var bodyStr = arr[i]
+		var responseStr = FetchData(bodyStr)
+		StoreDataFromResponse(responseStr)
+	}
 }
 
 func FetchData(bodyStr string) string {

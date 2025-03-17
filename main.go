@@ -11,8 +11,6 @@ import (
 
 func main() {
 	log.Print("Server is starting...")
-	jobRunning()
-	log.Print("Server test success")
 	c := cron.New()
 	_, err := c.AddFunc("0 21 * * *", func() {
 		fmt.Println("Cron job started at: ", time.Now())
@@ -27,7 +25,7 @@ func main() {
 }
 func jobRunning() {
 	//prepare data
-	listTime := services.CalculateTimeWithDb()
+	listTime := services.CalculateMaxTimeWithDb()
 	fmt.Printf("listTime: %v\n", listTime)
 	for i := 0; i < len(listTime); i++ {
 		time.Sleep(2 * time.Second)

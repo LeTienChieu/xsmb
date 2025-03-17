@@ -40,6 +40,30 @@ func GetMaxCreateDate() time.Time {
 	return maxTimeInDb
 }
 
+func GetMinCreateDate() time.Time {
+	// Query max date from day_of_xsmbs table
+	var db = OpenNativeConnection()
+	rows, err := db.Query("SELECT MIN(dox.day_of_prize) as `date` from day_of_xsmbs dox")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//close connection
+	CloseNativeConnection(db)
+	var minTimeInDb time.Time
+	for rows.Next() {
+		// Scan dữ liệu
+		err := rows.Scan(&minTimeInDb)
+		if err != nil {
+			log.Print("Lỗi khi scan dữ liệu:", err)
+		}
+	}
+	// Kiểm tra lỗi sau khi duyệt rows
+	if rows.Err() != nil {
+		log.Fatal(rows.Err())
+	}
+	return minTimeInDb
+}
+
 func LoadDataResponse(fromDate string, toDate string) []WrapResultAPI {
 	//open connection
 	var db = OpenNativeConnection()
