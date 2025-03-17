@@ -1,0 +1,14 @@
+db:
+  username: root
+  password: 123456
+  host: 192.168.1.72
+  port: 3306
+  dbname: go-lang-xsmb
+  driver: mysql
+
+config:
+  sheet:
+    file: google-auth/sinuous-crow-433203-m1-3e1f8830eebd.json
+    id: 1-qgSkMXo6lSq19RcxZDcAb6OB8V_NJWeseKrmTs5d0s
+  data:
+    url: http://xosothudo.com.vn/LotteryResult/LastResultHome
