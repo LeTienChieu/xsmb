@@ -16,6 +16,9 @@ func GenerateDataForOneNumber() {
 	resultSql := repositories.LoadAllData()
 	for _, item := range resultSql {
 		parts := strings.Split(item.ListNumberStr, ",")
+		if len(parts) != 27 {
+			continue
+		}
 		var output []string
 		for _, s := range parts {
 			if len(s) >= 2 {
